@@ -11,3 +11,4 @@ pdf2image
 opencv-python
 Pillow
 pdfminer.six
+regex
