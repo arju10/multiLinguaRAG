@@ -1,0 +1,13 @@
+PyMuPDF
+pymongo
+langchain
+sentence-transformers
+qdrant-client
+fastapi
+uvicorn
+python-dotenv
+pytesseract
+pdf2image
+opencv-python
+Pillow
+pdfminer.six
