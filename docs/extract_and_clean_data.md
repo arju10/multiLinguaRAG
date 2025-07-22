@@ -1,4 +1,4 @@
-# Step 1: Extract & Clean
+# Phase 1: Extract & Clean
 
 ## Goal
 - Extract text from HSC26 Bangla 1st Paper PDF

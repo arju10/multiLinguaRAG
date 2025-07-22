@@ -181,7 +181,10 @@ def extract_thematic_sections(text: str) -> dict:
 def semantic_chunking(text: str) -> list:
     chunks = []
 
+    # Try splitting by double newline (paragraphs)
     paragraphs = re.split(r'\n\n+', text)
+    print(f"🔍 Found {len(paragraphs)} paragraphs.")
+
     for para in paragraphs:
         para = para.strip()
         if len(para) < 50:  
@@ -190,6 +193,7 @@ def semantic_chunking(text: str) -> list:
         if len(para) <= 300:  
             chunks.append(para)
         else:
+            # Split by full stops, newlines, punctuation
             sentences = re.split(r'[।.!?\n]', para)
             current_chunk = ""
             for sent in sentences:
@@ -204,7 +208,11 @@ def semantic_chunking(text: str) -> list:
             if current_chunk:
                 chunks.append(current_chunk.strip())
 
-    if len(chunks) <= 1:
+    print(f"✅ Chunks after normal split: {len(chunks)}")
+
+    # If still too few, fallback
+    if len(chunks) <= 2:
+        print("⚠️ Too few chunks. Forcing fallback chunking...")
         forced_chunks = []
         forced_text = text.strip()
         chunk_size = 300
@@ -213,6 +221,7 @@ def semantic_chunking(text: str) -> list:
             if len(piece) > 50:
                 forced_chunks.append(piece)
         chunks = forced_chunks
+        print(f"✅ Fallback forced chunks: {len(chunks)}")
 
     return chunks
 
@@ -229,8 +238,8 @@ def pre_process_enhanced(text: str) -> dict:
     text = clean_whitespace(text)
     text = normalize_punctuation(text)
     text = remove_noise_lines(text)
-    chunks = semantic_chunking(text)
     text = remove_garbage_tokens(text) 
+    chunks = semantic_chunking(text)
 
     # Extract structured content
     structured = extract_thematic_sections(text)
