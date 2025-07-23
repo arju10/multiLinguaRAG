@@ -7,7 +7,7 @@ The steps were done in a single Python script (`preprocess_utils.py`).
 
 ---
 
-## 🗂️ Steps Done
+## 🗂️ Steps
 
 1. **Text Cleaning**
    - Removed unwanted symbols, numbers, noise lines.
