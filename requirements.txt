@@ -12,3 +12,8 @@ opencv-python
 Pillow
 pdfminer.six
 regex
+weaviate-client
+langchain
+sentence-transformers
+ollama
+faiss-cpu

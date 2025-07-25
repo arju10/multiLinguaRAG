@@ -72,3 +72,24 @@ LLM Answer (Ollama local)
     ↓
 FastAPI Serve
 ```
+
+
+
+# ✅ Answers to Assessment Questions
+1. What method did you use to extract text?
+Used direct file read (OCR output). Cleaned with regex and Unicode normalization.
+
+2. What chunking strategy?
+Semantic splitting by sentences and paragraphs. Preserves meaning.
+
+3. What embedding model?
+paraphrase-multilingual-MiniLM-L12-v2 — supports 100+ languages, including Bangla.
+
+4. How are queries compared?
+Cosine similarity in FAISS. Fast and accurate.
+
+5. How do you ensure meaningful comparison?
+Multilingual embeddings align meaning across languages.
+
+6. Are results relevant?
+Yes. All test cases pass. Can improve with better OCR or larger context.
