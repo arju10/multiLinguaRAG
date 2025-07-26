@@ -20,17 +20,19 @@ def normalize_unicode(text: str) -> str:
     return unicodedata.normalize('NFKC', text)
 
 def remove_unwanted_chars(text: str) -> str:
-    # Keep only Bangla, English, numbers, some punctuations
-    pattern = r"[^ঀ-৿a-zA-Z0-9.,?!।:;'\"()\-–—\s]"
+    pattern = r"[^ঀ-৿a-zA-Z0-9.,?!।|:;'\"()\-–—\s]"
     return re.sub(pattern, "", text)
 
 def clean_whitespace(text: str) -> str:
-    text = text.replace("\n", " ").replace("\t", " ")
-    text = re.sub(r"\s+", " ", text)
+    text = re.sub(r"\s*\|\s*", " | ", text)
+    text = text.replace("\t", " ")
+    text = re.sub(r" +", " ", text)
+    text = re.sub(r" *\n *", "\n", text)
+    text = re.sub(r"\n+", "\n", text)
+
     return text.strip()
 
 def normalize_punctuation(text: str) -> str:
-    # Multiple full stops --> single
     text = re.sub(r"।+", "।", text)
     text = re.sub(r"\.\.+", ".", text)
     return text
@@ -45,7 +47,8 @@ def fix_bangla_ocr_errors(text: str) -> str:
         'কলযাণী': 'কল্যাণী',
         'মামা': 'মামা',
         'অনুপম': 'অনুপম',
-        'শুম্ভুনাথ': 'শুম্ভুনাথ',
+        'শসতুনাথ': 'শুম্ভুনাথ',
+        'ছাবিবিশ':'ছাব্বিশ',
         'ব্ক': 'ব',       # Fix broken conjuncts
         '্ক': '্',         # Fix misplaced halant
         'ি': 'ি',          # Fix vowel signs
@@ -94,54 +97,53 @@ def remove_noise_lines(text: str) -> str:
     lines = text.split('\n')
     cleaned_lines = []
     noise_patterns = [
-        r'^\s*P[AGE]+\s*\d+',            # PAGE 24
-        r'^\s*\?+\s*$',                   # ?????
-        r'^\s*SLAns.*$',                  # Answer key lines
-        r'^\s*[i|ii|iii|iv]+\s*\.\s*$',   # Bullet points
-        r'^\s*উত্তর\s*:',                 # Answer headers
-        r'^\s*প্রশ্ন\-\s*\d+',            # "প্রশ্ন- ৩"
+        r'^\s*PAGE\s*\d+',                  # PAGE 24 বা PAGE24
+        r'^\s*\?+\s*$',                    # শুধু প্রশ্নচিহ্ন
+        r'^\s*SLAns.*$',                   # SLAns দিয়ে শুরু
+        r'^\s*(i|ii|iii|iv)+\s*\.\s*$',   # Roman numerals bullets
+        r'^\s*উত্তর\s*:',                 # উত্তর:
+        r'^\s*প্রশ্ন\-\s*\d+',             # প্রশ্ন- ৩
         r'^\s*\[\w+\.?\s*দিা\.?\s*\'?\d+', # [ঢা. দিা. '২২]
     ]
-    
+
     for line in lines:
-        if len(line.strip()) < 10:  # Too short
+        line = line.strip()
+        if len(line) < 10:
             continue
-        if any(re.match(pattern, line.strip()) for pattern in noise_patterns):
+        if any(re.match(pattern, line) for pattern in noise_patterns):
             continue
-        cleaned_lines.append(line.strip())
+        cleaned_lines.append(line)
     
     return '\n'.join(cleaned_lines)
+
 
 # Fix Broken Words (Conjuncts & Vowel Signs)
 def repair_bangla_conjuncts(text: str) -> str:
     # Fix common broken conjuncts
-    text = regex.sub(r'([ক-হ])\s+্\s+([ক-হ])', r'\1্য\2', text)  # e.g., ক ্ ষ → ক্ষ
-    text = regex.sub(r'([ক-হ])\s+ি', r'\1ি', text)  # fix spacing around vowel signs
+    text = regex.sub(r'([ক-হ])\s*্\s*([ক-হ])', r'\1্\2', text)
+    # Fix spacing around vowel signs
+    text = regex.sub(r'([ক-হ])\s+ি', r'\1ি', text)
     text = regex.sub(r'([ক-হ])\s+ী', r'\1ী', text)
+
     return text
 
-
-
 def remove_garbage_tokens(text: str) -> str:
-    # Word tokenize: Bangla, English, Numbers, Punctuation separate
     words = re.findall(r'\w+|[^\s\w]', text, re.UNICODE)
-
     cleaned_words = []
     for w in words:
-        # Only digit or Bengali digit or colon like 1081:39:
-        if re.fullmatch(r"[0-9০-৯:]+", w):
+        # Ignore pure numbers (বাংলা/ইংরেজি), একক অক্ষর, এবং punctuation (যা প্রয়োজন)
+        if re.fullmatch(r"[0-9০-৯]+", w):
             continue
-        # Single Bangla letter like ক খ গ ঘ
-        if re.fullmatch(r"[অ-ঔক-হ]", w):
+        if len(w) == 1 and re.fullmatch(r"[অ-ঔক-হ]", w):
             continue
-        # Standalone punctuation () বা single dot or single danda
-        # if w in {"(", ")", "।", ".", ",", ":", ";", "?", "!", "-", "–", "—"}:
-        if w in {"(", ")", "।", ".", ",", ":", ";", "?", "!", "-", "–", "—", "'", '"'}:
+        if w in {"(", ")", ".", ",", ":", ";", "?", "!", "-", "–", "—", "'", '"'}:
             continue
         cleaned_words.append(w)
-
     return " ".join(cleaned_words)
 
+
+def remove_small_numbers(text: str) -> str:
+    return re.sub(r'\b[০-৯0-9]{1,8}\b', '', text)
 
 # Reconstruct Structure: Identify Questions, Answers, Themes
 def extract_thematic_sections(text: str) -> dict:
@@ -177,54 +179,34 @@ def extract_thematic_sections(text: str) -> dict:
     return sections
 
 
+import re
 
-def semantic_chunking(text: str) -> list:
+def semantic_chunking(text: str, max_chunk_size=300, min_chunk_size=50):
     chunks = []
-
-    # Try splitting by double newline (paragraphs)
     paragraphs = re.split(r'\n\n+', text)
-    print(f"🔍 Found {len(paragraphs)} paragraphs.")
-
     for para in paragraphs:
         para = para.strip()
-        if len(para) < 50:  
+        if len(para) < min_chunk_size:
             continue
-
-        if len(para) <= 300:  
+        if len(para) <= max_chunk_size:
             chunks.append(para)
         else:
-            # Split by full stops, newlines, punctuation
-            sentences = re.split(r'[।.!?\n]', para)
-            current_chunk = ""
+            sentences = re.split(r'[।.!?]', para)
+            current = ""
             for sent in sentences:
                 sent = sent.strip()
                 if len(sent) < 10:
                     continue
-                if len(current_chunk) + len(sent) > 300:
-                    chunks.append(current_chunk.strip())
-                    current_chunk = sent
+                if len(current) + len(sent) + 1 > max_chunk_size:
+                    chunks.append(current.strip())
+                    current = sent
                 else:
-                    current_chunk += " " + sent
-            if current_chunk:
-                chunks.append(current_chunk.strip())
-
-    print(f"✅ Chunks after normal split: {len(chunks)}")
-
-    # If still too few, fallback
+                    current += " " + sent
+            if current:
+                chunks.append(current.strip())
     if len(chunks) <= 2:
-        print("⚠️ Too few chunks. Forcing fallback chunking...")
-        forced_chunks = []
-        forced_text = text.strip()
-        chunk_size = 300
-        for i in range(0, len(forced_text), chunk_size):
-            piece = forced_text[i:i+chunk_size].strip()
-            if len(piece) > 50:
-                forced_chunks.append(piece)
-        chunks = forced_chunks
-        print(f"✅ Fallback forced chunks: {len(chunks)}")
-
+        chunks = [text[i:i+max_chunk_size].strip() for i in range(0, len(text), max_chunk_size)]
     return chunks
-
 
 
 
@@ -232,13 +214,15 @@ def semantic_chunking(text: str) -> list:
 # Final Enhanced Preprocessing Function
 def pre_process_enhanced(text: str) -> dict:
     text = normalize_unicode(text)
-    text = fix_bangla_ocr_errors(text)
+    # text = clean_whitespace(text)
+    # text = fix_bangla_ocr_errors(text) #(Problemetic)
     text = remove_unwanted_chars(text)
-    text = repair_bangla_conjuncts(text)
-    text = clean_whitespace(text)
+    # text = repair_bangla_conjuncts(text)
     text = normalize_punctuation(text)
-    text = remove_noise_lines(text)
-    text = remove_garbage_tokens(text) 
+    text = remove_small_numbers (text)
+    # text = remove_noise_lines(text)
+    # text = remove_garbage_tokens(text) 
+
     chunks = semantic_chunking(text)
 
     # Extract structured content
@@ -251,7 +235,6 @@ def pre_process_enhanced(text: str) -> dict:
         "chunks": chunks,
         "structured": structured
     }
-
 
 # --- Run directly ---
 doc = collection.find_one({"book_name": "HSC26 Bangla 1st Paper"})
@@ -280,7 +263,9 @@ print("✅ Saved cleaned, chunks & sections to MongoDB!")
 os.makedirs("./data", exist_ok=True)
 with open("./data/cleaned_text_HSC26.txt", "w", encoding="utf-8") as f:
     f.write(cleaned)
+
 with open("./data/chunks_HSC26.txt", "w", encoding="utf-8") as f:
     for chunk in chunks:
-        f.write(chunk + "\n---\n")
-print("✅ Saved cleaned & chunks locally!")
+        f.write(chunk + "\n")
+
+print("✅ Saved cleaned & chunks locally without --- !")
