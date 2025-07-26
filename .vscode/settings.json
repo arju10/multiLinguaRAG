@@ -1,6 +1,7 @@
 {
     "python.analysis.extraPaths": [
         "./scripts/5_",
-        "./scripts/5_"
+        "./scripts/5_",
+        "./test"
     ]
 }
